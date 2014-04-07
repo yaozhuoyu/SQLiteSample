@@ -7,6 +7,7 @@
 //
 
 #import "AppDelegate.h"
+#import "SQLiteRootViewController.h"
 
 @implementation AppDelegate
 
@@ -14,6 +15,8 @@
 {
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     // Override point for customization after application launch.
+    SQLiteRootViewController *sqliteVC = [[SQLiteRootViewController alloc] init];
+    self.window.rootViewController = sqliteVC;
     self.window.backgroundColor = [UIColor whiteColor];
     [self.window makeKeyAndVisible];
     return YES;
