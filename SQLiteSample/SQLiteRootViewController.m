@@ -59,7 +59,7 @@
             break;
         }
         
-        if (![self findCString:@"c"]) {
+        if (![self findCString:@"testA"]) {
             //插入数据
             [self insertValueWithB:200 textC:@"testA" isLastInsert:NO];
             [self insertValueWithB:201 textC:@"testB" isLastInsert:NO];
@@ -70,6 +70,10 @@
         
         //查询数据
         [self selectAllData];
+        
+        NSLog(@">>>>>>%@ row count is %d", firstTableName, [self getRowCountOfTable:firstTableName]);
+        
+        [self selectSingleColumnTest];
         
     } while (0);
     
@@ -184,7 +188,7 @@
 
 - (BOOL)findCString:(NSString *)cString
 {
-    NSString *sql = [NSString stringWithFormat:@"select * from %@ where c=%@", firstTableName, cString];
+    NSString *sql = [NSString stringWithFormat:@"select * from %@ where c='%@'", firstTableName, cString];
     sqlite3_stmt *selectStatement;
     
     if (sqlite3_prepare_v2(db, [sql UTF8String], -1, &selectStatement, NULL) != SQLITE_OK) {
@@ -192,27 +196,84 @@
         return NO;
     }
     
+//    NSLog(@">>>>>> 测试sqlite3_column_name 0 , %s", sqlite3_column_name(selectStatement, 0));
+//    NSLog(@">>>>>> 测试sqlite3_column_name 1 , %s", sqlite3_column_name(selectStatement, 1));
+//    NSLog(@">>>>>> 测试sqlite3_column_name 2 , %s", sqlite3_column_name(selectStatement, 2));
+    //  结果 a, b, c
+    
+    NSLog(@">>>>> sqlite3_column_count: %d", sqlite3_column_count(selectStatement));
+    //  结果为3.
+    
     BOOL res = NO;
     
     if (sqlite3_step(selectStatement) == SQLITE_ROW) {
+        
+        NSLog(@">>>>> sqlite3_data_count: %d", sqlite3_data_count(selectStatement));
+        
         NSInteger aInt = sqlite3_column_int(selectStatement, 0);
         NSInteger bInt = sqlite3_column_int(selectStatement, 1);
         NSString *cString_ = [[NSString alloc] initWithUTF8String:(const char *)sqlite3_column_text(selectStatement, 2)];
-        NSLog(@"find c = %@ , is a :%d, b :%d, c :%@", cString,aInt, bInt, cString_);
+        NSLog(@">>>>>find c = %@ , is a :%d, b :%d, c :%@", cString,aInt, bInt, cString_);
         res = YES;
     }else{
         res = NO;
     }
-    
     sqlite3_finalize(selectStatement);
     return res;
 }
 
 
+- (void)selectSingleColumnTest
+{
+    NSString *sql = [NSString stringWithFormat:@"select a from %@ where c='%@'", firstTableName, @"testA"];
+    sqlite3_stmt *selectStatement;
+    
+    if (sqlite3_prepare_v2(db, [sql UTF8String], -1, &selectStatement, NULL) != SQLITE_OK) {
+        NSLog(@"select data prepare sql 失败 %s", sqlite3_errmsg(db));
+        return;
+    }
+    
+    NSLog(@">>>>>> 测试sqlite3_column_name 0 , %s", sqlite3_column_name(selectStatement, 0));
+    //  结果 a
+    
+    NSLog(@">>>>> sqlite3_column_count: %d", sqlite3_column_count(selectStatement));
+    //  结果为1.
+    
+    BOOL res = NO;
+    
+    if (sqlite3_step(selectStatement) == SQLITE_ROW) {
+        
+        NSLog(@">>>>> sqlite3_data_count: %d", sqlite3_data_count(selectStatement));
+        //  结果为1.
+        
+        NSInteger aInt = sqlite3_column_int(selectStatement, 0);
+        NSLog(@">>>>>find is a :%d", aInt);
+        res = YES;
+    }else{
+        res = NO;
+    }
+    sqlite3_finalize(selectStatement);
+}
 
 
-
-
+- (int)getRowCountOfTable:(NSString *)tableName
+{
+    NSString *sql = [NSString stringWithFormat:@"select count(*) from %@", tableName];
+    sqlite3_stmt *countStatement;
+    
+    if (sqlite3_prepare_v2(db, [sql UTF8String], -1, &countStatement, NULL) != SQLITE_OK) {
+        NSLog(@"select count prepare sql 失败 %s", sqlite3_errmsg(db));
+        return 0;
+    }
+    
+    int count = 0;
+    while (sqlite3_step(countStatement) == SQLITE_ROW) {
+        count = sqlite3_column_int(countStatement, 0);
+    }
+    sqlite3_finalize(countStatement);
+    return count;
+    
+}
 
 
 
