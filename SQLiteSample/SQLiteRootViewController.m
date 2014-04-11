@@ -73,7 +73,13 @@
         
         NSLog(@">>>>>>%@ row count is %d", firstTableName, [self getRowCountOfTable:firstTableName]);
         
-        [self selectSingleColumnTest];
+        //[self selectSingleColumnTest];
+        
+        NSLog(@"************************************************");
+        NSLog(@"测试transaction");
+        [self testSimpleTransactionAndRollBack];
+        [self testSimpleTransactionAndCommit];
+        
         
     } while (0);
     
@@ -133,6 +139,11 @@
     sqlite3_finalize(createStmt);
     successed = YES;
     return successed;
+}
+
+- (BOOL)deleteRowIfValueB:(NSUInteger)bInteger
+{
+    return YES;
 }
 
 - (BOOL)insertValueWithB:(NSInteger)bInteger textC:(NSString *)cString isLastInsert:(BOOL)isLastInsert
@@ -275,9 +286,96 @@
     
 }
 
+/////////////////////////////////////////////////////////////////////////////////////
 
+- (BOOL)beginNormalTransaction
+{
+    NSString *tSql = @"begin exclusive transaction";
+    sqlite3_stmt *transactionStatement;
+    
+    if (sqlite3_prepare_v2(db, [tSql UTF8String], -1, &transactionStatement, NULL) != SQLITE_OK) {
+        NSLog(@"transaction prepare sql 失败 %s", sqlite3_errmsg(db));
+        return NO;
+    }
+    
+    if (sqlite3_step(transactionStatement) != SQLITE_DONE) {
+        NSLog(@"transaction sqlite3 step 失败 %s", sqlite3_errmsg(db));
+        return NO;
+    }
+    sqlite3_finalize(transactionStatement);
+    return YES;
+}
 
+- (BOOL)rollbackTransaction
+{
+    NSString *tSql = @"rollback transaction";
+    sqlite3_stmt *transactionStatement;
+    
+    if (sqlite3_prepare_v2(db, [tSql UTF8String], -1, &transactionStatement, NULL) != SQLITE_OK) {
+        NSLog(@"rollback prepare sql 失败 %s", sqlite3_errmsg(db));
+        return NO;
+    }
+    
+    if (sqlite3_step(transactionStatement) != SQLITE_DONE) {
+        NSLog(@"rollback sqlite3 step 失败 %s", sqlite3_errmsg(db));
+        return NO;
+    }
+    sqlite3_finalize(transactionStatement);
+    return YES;
+}
 
+- (BOOL)commitTransaction
+{
+    NSString *tSql = @"commit transaction";
+    sqlite3_stmt *transactionStatement;
+    
+    if (sqlite3_prepare_v2(db, [tSql UTF8String], -1, &transactionStatement, NULL) != SQLITE_OK) {
+        NSLog(@"commit prepare sql 失败 %s", sqlite3_errmsg(db));
+        return NO;
+    }
+    
+    if (sqlite3_step(transactionStatement) != SQLITE_DONE) {
+        NSLog(@"commit sqlite3 step 失败 %s", sqlite3_errmsg(db));
+        return NO;
+    }
+    sqlite3_finalize(transactionStatement);
+    return YES;
+}
+
+- (void)testSimpleTransactionAndRollBack
+{
+    if (![self beginNormalTransaction]) {
+        NSLog(@"beginNormalTransaction failure");
+        return;
+    }
+    
+    [self insertValueWithB:300 textC:@"testZ" isLastInsert:NO];
+    [self insertValueWithB:301 textC:@"testY" isLastInsert:YES];
+    
+    if (![self rollbackTransaction]) {
+        NSLog(@"rollbackTransaction failure");
+        return;
+    }
+    [self selectAllData];
+    
+}
+
+- (void)testSimpleTransactionAndCommit
+{
+    if (![self beginNormalTransaction]) {
+        NSLog(@"beginNormalTransaction failure");
+        return;
+    }
+    
+    [self insertValueWithB:400 textC:@"testM" isLastInsert:NO];
+    [self insertValueWithB:401 textC:@"testN" isLastInsert:YES];
+    
+    if (![self commitTransaction]) {
+        NSLog(@"rollbackTransaction failure");
+        return;
+    }
+    [self selectAllData];
+}
 
 
 
