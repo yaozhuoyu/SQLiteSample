@@ -32,9 +32,21 @@
 {
     [super viewDidLoad];
     
+    //删除之前的db文件
+    NSString *sqliteFilePath = [self sqliteFilePath];
+    
+    BOOL isDirectory = NO;
+    if ([[NSFileManager defaultManager] fileExistsAtPath:sqliteFilePath isDirectory:&isDirectory]) {
+        //
+        NSLog(@"删除之前的db文件");
+        [[NSFileManager defaultManager] removeItemAtPath:sqliteFilePath error:NULL];
+    }
+    
+    
     firstTableName = @"firstTable";
     
-    [self sqliteTest];
+    //[self sqliteTest];
+    [self sqliteInsertTest];
 }
 
 - (void)didReceiveMemoryWarning
@@ -45,6 +57,69 @@
 
 #pragma mark -
 #pragma mark - sqlite function
+
+// sqlite 插入测试
+- (void)sqliteInsertTest{
+    //打开数据库
+    BOOL openFlag = [self openDB];
+    if (!openFlag) {
+        return;
+    }
+    
+    do {
+        BOOL createFlag = [self createTableWith:firstTableName];
+        if (!createFlag) {
+            break;
+        }
+        /*
+         结果为：
+         2015-01-29 19:30:09.412 SQLiteSample[509:60654] geneal insert begin
+         2015-01-29 19:30:22.046 SQLiteSample[509:60654] geneal insert finish
+         2015-01-29 19:30:22.047 SQLiteSample[509:60654] transaction insert begin
+         2015-01-29 19:30:22.120 SQLiteSample[509:60654] transaction insert finish
+         */
+        
+        //一般插入
+        NSLog(@"geneal insert begin");
+        NSUInteger maxNum = 1000;
+        for (NSUInteger index = 0; index < maxNum; index ++) {
+            BOOL isLastInsert = NO;
+            if (index == maxNum - 1) {
+                isLastInsert = YES;
+            }
+            [self insertValueWithB:index textC:[NSString stringWithFormat:@"test%ld", index] isLastInsert:isLastInsert];
+        }
+        NSLog(@"geneal insert finish");
+        
+        
+        ////////////////////////////////////////////////////////////////////////////////
+        
+        NSLog(@"transaction insert begin");
+        //添加事务
+        if (![self beginNormalTransaction]) {
+            NSLog(@"beginNormalTransaction failure");
+            return;
+        }
+        
+        for (NSUInteger index = 0; index < maxNum; index ++) {
+            BOOL isLastInsert = NO;
+            if (index == maxNum - 1) {
+                isLastInsert = YES;
+            }
+            [self insertValueWithB:index + maxNum textC:[NSString stringWithFormat:@"test%ld", index + maxNum] isLastInsert:isLastInsert];
+        }
+        
+        if (![self commitTransaction]) {
+            NSLog(@"rollbackTransaction failure");
+            return;
+        }
+        NSLog(@"transaction insert finish");
+        
+        
+    } while (0);
+    
+}
+
 
 - (void)sqliteTest
 {
@@ -158,7 +233,7 @@
         }
     }
     
-    sqlite3_bind_int(insertStatement, 1, bInteger);
+    sqlite3_bind_int64(insertStatement, 1, bInteger);
     sqlite3_bind_text(insertStatement, 2, [cString UTF8String], -1, SQLITE_STATIC);
     
     if (sqlite3_step(insertStatement) != SQLITE_DONE) {
@@ -191,7 +266,7 @@
         NSInteger aInt = sqlite3_column_int(selectStatement, 0);
         NSInteger bInt = sqlite3_column_int(selectStatement, 1);
         NSString *cString = [[NSString alloc] initWithUTF8String:(const char *)sqlite3_column_text(selectStatement, 2)];
-        NSLog(@"a :%d, b :%d, c :%@",aInt, bInt, cString);
+        NSLog(@"a :%ld, b :%ld, c :%@",aInt, bInt, cString);
     }
     
     sqlite3_finalize(selectStatement);
@@ -224,7 +299,7 @@
         NSInteger aInt = sqlite3_column_int(selectStatement, 0);
         NSInteger bInt = sqlite3_column_int(selectStatement, 1);
         NSString *cString_ = [[NSString alloc] initWithUTF8String:(const char *)sqlite3_column_text(selectStatement, 2)];
-        NSLog(@">>>>>find c = %@ , is a :%d, b :%d, c :%@", cString,aInt, bInt, cString_);
+        NSLog(@">>>>>find c = %@ , is a :%ld, b :%ld, c :%@", cString,aInt, bInt, cString_);
         res = YES;
     }else{
         res = NO;
@@ -258,7 +333,7 @@
         //  结果为1.
         
         NSInteger aInt = sqlite3_column_int(selectStatement, 0);
-        NSLog(@">>>>>find is a :%d", aInt);
+        NSLog(@">>>>>find is a :%ld", aInt);
         res = YES;
     }else{
         res = NO;
