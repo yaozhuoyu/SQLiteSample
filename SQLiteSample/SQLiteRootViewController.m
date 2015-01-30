@@ -8,11 +8,14 @@
 
 #import "SQLiteRootViewController.h"
 #import "sqlite3.h"
+#import "FMDB.h"
 
 @interface SQLiteRootViewController ()
 {
     sqlite3 *db;
     NSString *firstTableName;
+    
+    FMDatabaseQueue *queue;
 }
 
 @end
@@ -46,7 +49,9 @@
     firstTableName = @"firstTable";
     
     //[self sqliteTest];
-    [self sqliteInsertTest];
+    //[self sqliteInsertTest];
+    
+    [self fmdbDeadLockTest];
 }
 
 - (void)didReceiveMemoryWarning
@@ -57,6 +62,34 @@
 
 #pragma mark -
 #pragma mark - sqlite function
+
+- (void)fmdbDeadLockTest{
+    queue = [FMDatabaseQueue databaseQueueWithPath:[self sqliteFilePath]];
+    [queue inTransaction:^(FMDatabase *fdb, BOOL *rollback) {
+        [fdb executeUpdate:@"create table test (a text, b text, c integer, d double, e double)"];
+        [self fmdbDeadLockTestInsertData];
+    }];
+    
+    
+}
+
+- (void)fmdbDeadLockTestInsertData{
+    queue = [FMDatabaseQueue databaseQueueWithPath:[self sqliteFilePath]];
+    //这里就会造成再去获取锁的时候busy
+    [queue inTransaction:^(FMDatabase *fdb, BOOL *rollback) {
+        [fdb executeUpdate:@"insert into test (a, b, c, d, e) values (?, ?, ?, ?, ?)" ,
+         @"hi'",
+         [NSString stringWithFormat:@"number %d", 1],
+         [NSNumber numberWithInt:1],
+         [NSDate date],
+         [NSNumber numberWithFloat:2.2f]];
+    }];
+}
+
+
+/////////////////////////////////////////////////////////////////
+
+
 
 // sqlite 插入测试
 - (void)sqliteInsertTest{
